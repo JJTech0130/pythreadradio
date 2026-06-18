@@ -54,7 +54,9 @@ If you encounter the following error:
 
 This means that Apple's `threadradiod` is currently running. Use the included `daemonslayer` command to stop it.
 ```
-sudo daemonslayer threadradio
+sudo daemonslayer threadradiod
 ```
 
 Alternatively, if you have SIP disabled, you can unload it with `launchctl`.
+
+If you quit the Home app, it is likely that the daemon will stop on it's own, as HomeKit (for Matter-over-Thread) is currently the only thing that uses `threadradiod`.
