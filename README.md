@@ -5,6 +5,7 @@
 Python library and CLI for talking to the Thread radio on Apple Silicon
 Macs.
 
+Unlike my [threadctl](https://github.com/JJTech0130/threadctl), it talks directly to the NCP and bypasses Apple's userspace Thread stack. As such, it does not require any special entitlements, but may be more fragile.
 ## Supported hardware
 
 Starting roughly in 2023, Apple began enabling the Thread NCP included in Broadcom's BCM4388 radio.
