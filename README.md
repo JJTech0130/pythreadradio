@@ -46,3 +46,15 @@ Where `11` is the 802.15.4 channel to sniff.
 `threadradiod` (a modified version of [wpantund](https://github.com/openthread/wpantund)) owns the TSI Skywalk channel under normal operation and must be stopped before opening the channel.
 
 Apple's Thread NCP uses the [Spinel](https://tools.ietf.org/html/draft-rquattle-spinel-unified) protocol, it appears to be based on a modified version of OpenThread.
+
+## Troubleshooting
+
+If you encounter the following error:
+> RuntimeError: [skywalk] os_channel_create failed for 'tsi' (is the owning daemon still running?)
+
+This means that Apple's `threadradiod` is currently running. Use the included `daemonslayer` command to stop it.
+```
+sudo daemonslayer threadradio
+```
+
+Alternatively, if you have SIP disabled, you can unload it with `launchctl`.

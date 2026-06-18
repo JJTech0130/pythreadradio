@@ -10,3 +10,4 @@ description = "Thread NCP (TSI/Skywalk) interface and sniffer for Apple platform
 
 [project.scripts]
 threadsniff = "threadradio.sniffer:main"
+daemonslayer = "threadradio.daemonslayer:main"
