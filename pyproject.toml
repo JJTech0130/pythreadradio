@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "threadradio"
+version = "0.1.0"
+requires-python = ">=3.12"
+description = "Thread NCP (TSI/Skywalk) interface and sniffer for Apple platforms"
+
+[project.scripts]
+threadsniff = "threadradio.sniffer:main"
