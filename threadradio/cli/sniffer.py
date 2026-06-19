@@ -2,10 +2,10 @@
 sniffer.py — Thread 802.15.4 sniffer that outputs raw pcap.
 
 Pipe to Wireshark:
-    sudo python -m threadradio.sniffer | wireshark -k -i -
+    sudo python -m threadradio.cli.sniffer | wireshark -k -i -
 
 Save to file:
-    sudo python -m threadradio.sniffer -c 15 -o trace.pcap
+    sudo python -m threadradio.cli.sniffer -c 15 -o trace.pcap
 """
 
 import optparse
@@ -13,8 +13,8 @@ import struct
 import sys
 import time
 
-from .thread import ThreadInterface
-from . import spinel
+from ..hardware.apple import AppleRadio
+from ..hardware import spinel
 
 # ── PCAP ──────────────────────────────────────────────────────────────────────
 
@@ -106,7 +106,7 @@ def main():
     if opts.use_host_timestamp:
         sys.stderr.write('WARNING: Using host timestamp, may be inaccurate\n')
 
-    with ThreadInterface() as radio:
+    with AppleRadio() as radio:
         sys.stderr.write('Initializing sniffer...\n')
 
         if not opts.no_reset:

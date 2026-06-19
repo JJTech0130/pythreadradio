@@ -9,6 +9,6 @@ requires-python = ">=3.12"
 description = "Thread NCP (TSI/Skywalk) interface and sniffer for Apple platforms"
 
 [project.scripts]
-threadsniff = "threadradio.sniffer:main"
-daemonslayer = "threadradio.daemonslayer:main"
-threadscan = "threadradio.scan:main"
+threadsniff = "threadradio.cli.sniffer:main"
+daemonslayer = "threadradio.cli.daemonslayer:main"
+threadscan = "threadradio.cli.scan:main"

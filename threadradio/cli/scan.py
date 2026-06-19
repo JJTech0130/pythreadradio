@@ -9,10 +9,10 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 
-from .thread import ThreadInterface
+from ..hardware.apple import AppleRadio
+from ..thread import scanner
 
 
 def _print_table(networks: list[dict]) -> None:
@@ -27,14 +27,14 @@ def _print_table(networks: list[dict]) -> None:
     print(header)
     print(sep)
     for n in networks:
-        j        = "J" if n.get("joinable") else " "
-        name     = (n.get("network_name") or "")[:16]
-        xpanid   = (n.get("ext_pan_id") or "")[:16]
-        panid    = (n.get("pan_id") or "")
-        mac      = (n.get("ext_addr") or "")[:16]
-        ch       = n.get("channel", 0)
-        rssi     = n.get("rssi", 0)
-        lqi      = n.get("lqi", 0)
+        j      = "J" if n.get("joinable") else " "
+        name   = (n.get("network_name") or "")[:16]
+        xpanid = (n.get("ext_pan_id") or "")[:16]
+        panid  = (n.get("pan_id") or "")
+        mac    = (n.get("ext_addr") or "")[:16]
+        ch     = n.get("channel", 0)
+        rssi   = n.get("rssi", 0)
+        lqi    = n.get("lqi", 0)
         print(f"| {j} | {name:<16} | {xpanid:<16} | {panid:<4} | {mac:<16} | {ch:>2} | {rssi:>4} | {lqi:>3} |")
 
 
@@ -69,20 +69,16 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # if os.geteuid() != 0:
-    #     print("error: threadscan must run as root", file=sys.stderr)
-    #     sys.exit(1)
-
     channels = [args.channel] if args.channel is not None else list(range(11, 27))
 
     print(f"Scanning channel{'s' if len(channels) > 1 else ''} "
           f"{channels[0] if len(channels) == 1 else f'{channels[0]}-{channels[-1]}'} "
           f"({args.period} ms/ch)…", file=sys.stderr)
 
-    with ThreadInterface(debug=args.debug) as radio:
+    with AppleRadio(debug=args.debug) as radio:
         if not args.no_reset:
             radio.reset()
-        networks = radio.scan(channels=channels, period_ms=args.period)
+        networks = scanner.scan(radio, channels=channels, period_ms=args.period)
 
     if args.json:
         print(json.dumps(networks, indent=2))
