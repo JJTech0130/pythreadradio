@@ -4,100 +4,35 @@ beacon.py — Thread 802.15.4 beacon frame parsing.
 
 import struct
 
+from ..hardware.ieee802154 import parse_beacon_mac_header
 from ..hardware import spinel
 
-# ── 802.15.4 frame-control bit masks ─────────────────────────────────────────
-
-_FC_FRAME_TYPE_MASK   = 0x0007
-_FC_FRAME_TYPE_BEACON = 0x0000
-_FC_PAN_COMPRESSION   = 0x0040
-_FC_DST_ADDR_MASK     = 0x0C00
-_FC_DST_ADDR_NONE     = 0x0000
-_FC_DST_ADDR_SHORT    = 0x0800
-_FC_DST_ADDR_EXT      = 0x0C00
-_FC_SRC_ADDR_MASK     = 0xC000
-_FC_SRC_ADDR_NONE     = 0x0000
-_FC_SRC_ADDR_SHORT    = 0x8000
-_FC_SRC_ADDR_EXT      = 0xC000
-
-# ── Thread BeaconPayload flag bits ────────────────────────────────────────────
+_THREAD_PROTOCOL_ID = 0x03
 
 _FLAG_VERSION_SHIFT = 4
 _FLAG_NATIVE        = 1 << 3   # kNativeFlag
 _FLAG_JOINABLE      = 1 << 0   # kJoiningFlag
 
-_THREAD_PROTOCOL_ID = 0x03
-
 
 def parse_frame(frame: bytes, channel: int, rssi: int = 0, lqi: int = 0) -> dict | None:
     """
-    Parse a raw 802.15.4 Beacon frame received via PROP_STREAM_RAW.
+    Parse a raw 802.15.4 Beacon frame for Thread network info.
 
-    Thread routers respond to Beacon Requests with extended-source beacons:
+    Thread routers respond to Beacon Requests with extended-source beacons.
+    The Thread BeaconPayload (after the 802.15.4 Beacon header) starts with
+    Protocol ID 0x03, followed by flags, NetworkName(16), and ExtPanId(8).
 
-      FC(2) Seq(1) SrcPAN(2) SrcExtAddr(8)                     13 B MAC header
-      SuperframeSpec(2) GTSSpec(1+) PendingAddr(1+)              4 B 802.15.4 Beacon
-      ProtocolId(1=0x03) Flags(1) NetworkName(16) XPanId(8)      Thread payload
-      FCS(2) — included in frame length but excluded from payload parsing
+    Flags byte: bits[7:4]=version | bit[3]=native | bit[0]=joinable
 
-    Flags byte: bits[7:4] = version | bit[3] = native | bit[0] = joinable
-
-    Returns None if the frame is not a valid Thread Beacon.
+    Returns None if not a valid Thread Beacon.
     """
-    if len(frame) < 15:
+    result = parse_beacon_mac_header(frame)
+    if result is None:
         return None
+    header, offset = result
 
-    fc = struct.unpack_from('<H', frame, 0)[0]
-    if (fc & _FC_FRAME_TYPE_MASK) != _FC_FRAME_TYPE_BEACON:
-        return None
-
-    pan_compression = bool(fc & _FC_PAN_COMPRESSION)
-    dst_mode        = fc & _FC_DST_ADDR_MASK
-    src_mode        = fc & _FC_SRC_ADDR_MASK
-
-    offset = 3  # past FC(2) + Seq(1)
-
-    dst_pan: int | None = None
-    if dst_mode != _FC_DST_ADDR_NONE:
-        if len(frame) < offset + 2:
-            return None
-        dst_pan = struct.unpack_from('<H', frame, offset)[0]; offset += 2
-    if   dst_mode == _FC_DST_ADDR_SHORT: offset += 2
-    elif dst_mode == _FC_DST_ADDR_EXT:   offset += 8
-
-    src_pan: int | None = None
-    if src_mode != _FC_SRC_ADDR_NONE:
-        if pan_compression and dst_mode != _FC_DST_ADDR_NONE:
-            src_pan = dst_pan
-        else:
-            if len(frame) < offset + 2:
-                return None
-            src_pan = struct.unpack_from('<H', frame, offset)[0]; offset += 2
-
-    src_ext:   bytes | None = None
-    src_short: int   | None = None
-    if src_mode == _FC_SRC_ADDR_EXT:
-        if len(frame) < offset + 8:
-            return None
-        src_ext = frame[offset:offset + 8]; offset += 8
-    elif src_mode == _FC_SRC_ADDR_SHORT:
-        if len(frame) < offset + 2:
-            return None
-        src_short = struct.unpack_from('<H', frame, offset)[0]; offset += 2
-
-    if len(frame) < offset + 4:
-        return None
-    offset += 2  # SuperframeSpec
-    gts_spec  = frame[offset]; offset += 1
-    gts_count = gts_spec & 0x07
-    if gts_count:
-        offset += 1 + gts_count * 3
-    if len(frame) < offset + 1:
-        return None
-    pending = frame[offset]; offset += 1
-    offset += (pending & 0x07) * 2 + ((pending >> 4) & 0x07) * 8
-
-    payload = frame[offset:len(frame) - 2]  # strip 2-byte FCS
+    # Thread BeaconPayload — strip 2-byte FCS appended by the NCP
+    payload = frame[offset:len(frame) - 2]
     if len(payload) < 2 or payload[0] != _THREAD_PROTOCOL_ID:
         return None
 
@@ -105,7 +40,10 @@ def parse_frame(frame: bytes, channel: int, rssi: int = 0, lqi: int = 0) -> dict
     version  = (flags >> _FLAG_VERSION_SHIFT) & 0x0F
     native   = bool(flags & _FLAG_NATIVE)
     joinable = bool(flags & _FLAG_JOINABLE)
-    pan_id   = src_pan if src_pan is not None else (dst_pan or 0)
+
+    src_ext   = header['src_ext']
+    src_short = header['src_short']
+    pan_id    = header['pan_id']
 
     return {
         'channel':       channel,
@@ -125,7 +63,7 @@ def parse_frame(frame: bytes, channel: int, rssi: int = 0, lqi: int = 0) -> dict
 
 def parse_scan_beacon(value: bytes) -> dict | None:
     """
-    Parse a PROP_MAC_SCAN_BEACON value (NCP/MTD/FTD path, not used on RCP).
+    Parse a PROP_MAC_SCAN_BEACON value (NCP/MTD/FTD path — not used on RCP).
 
     Wire format: Cct(ESSc)t(iCUdd)
       C  channel
@@ -177,7 +115,7 @@ def parse_scan_beacon(value: bytes) -> dict | None:
     net = value[offset:net_end]
 
     proto, n = spinel.decode_i(net)
-    if proto != 3:  # SPINEL_PROTOCOL_TYPE_THREAD
+    if proto != 3:
         return result
     pos = n
 

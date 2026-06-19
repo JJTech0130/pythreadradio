@@ -1,5 +1,5 @@
 """
-scanner.py — Thread network active scan.
+scanner.py — Zigbee network active scan.
 """
 
 import sys
@@ -15,8 +15,8 @@ def scan(
     timeout: float | None = None,
 ) -> list[dict]:
     """
-    Scan for Thread networks; returns a list of network dicts (one per unique
-    channel+pan_id+ext_addr).
+    Scan for Zigbee networks; returns a list of network dicts (one per unique
+    channel+pan_id+ext_pan_id).
     """
     results: list[dict] = []
     seen:    set[tuple] = set()
@@ -24,9 +24,10 @@ def scan(
     for frame, channel, rssi, lqi in _raw.raw_scan(radio, channels, period_ms, timeout):
         net = _beacon.parse_frame(frame, channel, rssi, lqi)
         if radio.debug and net is None:
-            print(f"[dwell ch={channel}] not a Thread beacon", file=sys.stderr)
+            print(f"[dwell ch={channel}] not a Zigbee beacon", file=sys.stderr)
         if net:
-            key = (channel, net['pan_id'], net['ext_addr'])
+            # §5 / NLME-NETWORK-DISCOVERY.confirm: deduplicate by Extended PAN ID
+            key = net['ext_pan_id']
             if key not in seen:
                 seen.add(key)
                 results.append(net)

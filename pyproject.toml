@@ -12,3 +12,4 @@ description = "Thread NCP (TSI/Skywalk) interface and sniffer for Apple platform
 threadsniff = "threadradio.cli.sniffer:main"
 daemonslayer = "threadradio.cli.daemonslayer:main"
 threadscan = "threadradio.cli.scan:main"
+zigbeescan = "threadradio.cli.zigbee_scan:main"
