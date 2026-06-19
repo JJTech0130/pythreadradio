@@ -5,10 +5,10 @@
 Python library and CLI for talking to the Thread radio on Apple Silicon
 Macs.
 
-Unlike my [threadctl](https://github.com/JJTech0130/threadctl), it talks directly to the NCP and bypasses Apple's userspace Thread stack. As such, it does not require any special entitlements, but may be more fragile.
+Unlike my [threadctl](https://github.com/JJTech0130/threadctl), it talks directly to the RCP and bypasses Apple's userspace Thread stack. As such, it does not require any special entitlements, but may be more fragile.
 ## Supported hardware
 
-Starting roughly in 2023, Apple began enabling the Thread NCP included in Broadcom's BCM4388 radio.
+Starting roughly in 2023, Apple began enabling the Thread RCP included in Broadcom's BCM4388 radio.
 > Apple uses modules from [USI](https://www.usiglobal.com/) and [Amkor](https://amkor.com/) to package the BCM4388 radio.
 > I have documented the module codename and underlying chipset used in each Mac, extracted from the devicetree: https://gist.github.com/JJTech0130/bf7dbc5b4ea1442a07bbd58bb1ae89c4
 
@@ -43,9 +43,7 @@ Where `11` is the 802.15.4 channel to sniff.
 
 ## Notes
 
-`threadradiod` (a modified version of [wpantund](https://github.com/openthread/wpantund)) owns the TSI Skywalk channel under normal operation and must be stopped before opening the channel.
-
-Apple's Thread NCP uses the [Spinel](https://tools.ietf.org/html/draft-rquattle-spinel-unified) protocol, it appears to be based on a modified version of OpenThread.
+Apple's Thread RCP uses the [Spinel](https://tools.ietf.org/html/draft-rquattle-spinel-unified) protocol, it appears to be based on a modified version of OpenThread.
 
 ## Troubleshooting
 
