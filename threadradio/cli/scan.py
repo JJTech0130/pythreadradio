@@ -48,8 +48,8 @@ def main() -> None:
         help="Scan a single channel (11-26). Default: all Thread channels.",
     )
     parser.add_argument(
-        "--period", type=int, default=30, metavar="MS",
-        help="Dwell time per channel in milliseconds (default: 30).",
+        "--period", type=int, default=300, metavar="MS",
+        help="Dwell time per channel in milliseconds (default: 300).",
     )
     parser.add_argument(
         "--timeout", type=float, default=None, metavar="SEC",
