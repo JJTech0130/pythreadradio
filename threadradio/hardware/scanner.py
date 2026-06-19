@@ -17,30 +17,26 @@ def raw_scan(
     radio,
     channels: list[int] | range = range(11, 27),
     period_ms: int = 300,
-    timeout: float | None = None,
+    deadline: float | None = None,
 ) -> Generator[tuple[bytes, int, int, int], None, None]:
     """
-    Generator: perform an IEEE 802.15.4 active scan, yielding raw beacon frames.
+    Generator: single-pass IEEE 802.15.4 active scan, yielding raw beacon frames.
 
     Yields (frame_bytes, channel, rssi, lqi) for each PROP_STREAM_RAW IS frame
     received during the scan window.  PHY is enabled on entry and restored to
     disabled on exit — including when the consumer breaks early or raises.
 
-    Protocol:
-      1. SET PROP_MAC_15_4_PANID = 0xFFFF   broadcast PAN filter
-      2. Per channel: TX Beacon Request via PROP_STREAM_RAW
-      3. Listen for PROP_STREAM_RAW IS frames for the full period_ms dwell
+    Args:
+        deadline: optional absolute monotonic time (time.monotonic()) at which
+                  to stop early; checked at channel boundaries.  Pass this from
+                  scan_iter() to bound continuous scans to a wall-clock timeout.
 
-    LAST_STATUS is NOT used as an end-of-channel signal here.  In raw RCP mode
-    LAST_STATUS means "TX done (CSMA-CA complete, frame on air)" — the NCP then
-    stays in RX mode.  Zigbee routers can take 10–30 ms to send a beacon after
-    receiving a Beacon Request, so we must hold the dwell window open for the
-    full period_ms rather than breaking early on TX-done.
-    (Thread beacons arrive quickly enough that the deadline handles termination.)
+    LAST_STATUS is NOT used as an end-of-channel signal.  In raw RCP mode it
+    means "TX done (CSMA-CA complete, frame on air)"; the NCP stays in RX mode
+    afterwards.  Zigbee routers can take 10-30ms to respond, so the dwell window
+    stays open for the full period_ms.
     """
     channels = list(channels)
-    if timeout is not None:
-        period_ms = min(period_ms, max(1, int(timeout * 1000 / len(channels))))
 
     seq = 0x00
     radio.prop_set(spinel.PROP_PHY_ENABLED, 1)
@@ -48,6 +44,8 @@ def raw_scan(
 
     try:
         for channel in channels:
+            if deadline is not None and time.monotonic() >= deadline:
+                return
             req    = bytearray(spinel.BEACON_REQUEST)
             req[2] = seq
             seq    = (seq + 1) & 0xFF
@@ -61,9 +59,9 @@ def raw_scan(
             )
             radio._prop_set_raw(spinel.PROP_STREAM_RAW, tx)
 
-            deadline = time.monotonic() + period_ms / 1000
-            while time.monotonic() < deadline:
-                ms  = max(1, int((deadline - time.monotonic()) * 1000))
+            ch_deadline = time.monotonic() + period_ms / 1000
+            while time.monotonic() < ch_deadline:
+                ms  = max(1, int((ch_deadline - time.monotonic()) * 1000))
                 pkt = radio.recv(timeout_ms=ms)
                 if pkt is None:
                     continue

@@ -395,7 +395,11 @@ def write_slot(ch: SkywalkChannel, data: bytes, timeout_ms: int = -1) -> bool:
     sp   = _SlotProp()
     slot = _libc.os_channel_get_next_slot(ch.tx_ring, None, ctypes.byref(sp))
     if not slot:
-        raise RuntimeError("[skywalk] write: no TX slot available")
+        # Hack: just sleep for 100ms and try again
+        import time
+        print("[skywalk] ran out of slots, waiting 100ms!")
+        time.sleep(0.1)
+        return write_slot(ch, data, timeout_ms)
 
     ctypes.memmove(sp.sp_buf_ptr, data, len(data))
     sp.sp_len = len(data)
